@@ -16,7 +16,7 @@ import (
 
 var (
 	useColor = flag.Bool("color", false, "Output in color.")
-	useOp    = flag.String("op", "avg", "Operation: avg, mul, min, max, and, or, xor")
+	useOp    = flag.String("op", "avg", "Operation: avg, mul, min, max, and, or, xor, sq, ln")
 )
 
 // Merger implements operations on pixels
@@ -84,6 +84,10 @@ func main() {
 		op = &bitwiseOr{}
 	case "xor":
 		op = &bitwiseXor{}
+	case "sq":
+		op = &sq{}
+	case "ln":
+		op = &ln{}
 	default:
 		log.Fatal("Invalid operation: ", *useOp)
 	}
