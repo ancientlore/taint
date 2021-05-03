@@ -4,14 +4,15 @@ import (
 	"flag"
 	"fmt"
 	"image"
-	"image/color"
 	"image/draw"
 	_ "image/gif"
-	_ "image/jpeg"
-	"image/png"
+	"image/jpeg"
+	_ "image/png"
 	"log"
 	"math"
 	"os"
+
+	"github.com/ancientlore/taint/images"
 )
 
 var (
@@ -19,18 +20,11 @@ var (
 	useOp    = flag.String("op", "avg", "Operation: avg, mul, min, max, and, or, xor, sq, ln")
 )
 
-// Merger implements operations on pixels
-type Merger interface {
-	Reset()
-	Add(c color.Color)
-	Merge() color.Color
-}
-
 func main() {
 	flag.Parse()
 
 	var (
-		images []image.Image
+		imgs   []image.Image
 		bounds = image.Rectangle{
 			Min: image.Point{
 				X: math.MinInt32,
@@ -49,7 +43,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		images = append(images, img)
+		imgs = append(imgs, img)
 		b := img.Bounds()
 		fmt.Println(flag.Arg(i), " ", b)
 		if b.Min.X > bounds.Min.X {
@@ -65,29 +59,29 @@ func main() {
 			bounds.Max.Y = b.Max.Y
 		}
 	}
-	// log.Print(bounds)
+	log.Print(bounds)
 
 	// create operation
-	var op Merger
+	var src image.Image
 	switch *useOp {
 	case "avg":
-		op = &average{}
+		src = images.Average(imgs)
 	case "mul":
-		op = &multiply{}
+		src = images.Multiply(imgs)
 	case "min":
-		op = &minimum{}
+		src = images.Min(imgs)
 	case "max":
-		op = &maximum{}
+		src = images.Max(imgs)
 	case "and":
-		op = &bitwiseAnd{}
+		src = images.And(imgs)
 	case "or":
-		op = &bitwiseOr{}
+		src = images.Or(imgs)
 	case "xor":
-		op = &bitwiseXor{}
+		src = images.Xor(imgs)
 	case "sq":
-		op = &sq{}
+		src = images.Square(imgs)
 	case "ln":
-		op = &ln{}
+		src = images.Ln(imgs)
 	default:
 		log.Fatal("Invalid operation: ", *useOp)
 	}
@@ -100,26 +94,15 @@ func main() {
 		finalImg = image.NewGray16(bounds)
 	}
 
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			var (
-				c color.Color
-			)
-			op.Reset()
-			for _, img := range images {
-				op.Add(img.At(x, y))
-			}
-			c = op.Merge()
-			finalImg.Set(x, y, c)
-		}
-	}
+	draw.Draw(finalImg, finalImg.Bounds(), src, src.Bounds().Min, draw.Src)
 
-	out, err := os.Create("output.png")
+	out, err := os.Create("output.jpg")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer out.Close()
-	err = png.Encode(out, finalImg)
+	err = jpeg.Encode(out, finalImg, &jpeg.Options{Quality: 90})
+	//err = png.Encode(out, finalImg)
 	if err != nil {
 		log.Fatal(err)
 	}
